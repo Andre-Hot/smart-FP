@@ -125,3 +125,16 @@ def modtag_data():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+@app.route('/opret', methods=['GET', 'POST'])
+def opret_borger():
+    if request.method == 'POST':
+        navn = request.form['navn']
+        adresse = request.form['adresse']
+
+        db = get_db()
+        db.execute('INSERT INTO borger (navn, adresse) VALUES (?,?)', (navn, adresse))
+        db.commit()
+        return render_template('opret_borger.html', besked="Borger oprettet!")
+    
+    return render_template('opret_borger.html')
