@@ -5,35 +5,36 @@ from datetime import datetime
 app = Flask(__name__)
 DATABASE = 'database.db'
 
-# db-connection
- 
+# --- DATABASE FORBINDELSE ---
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g.database = sqlite3.connect(DATABASE)
-        db.row_factory = sqlite3.Row
+        db = g._database = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row 
     return db
 
-app.teardown_appcontext
+@app.teardown_appcontext
 def close_connection(exception):
     db = getattr(g, '_database', None)
     if db is not None:
         db.close()
 
-# tables
+# --- INITIALISERING AF TABELLER ---
 def init_db():
     with app.app_context():
         db = get_db()
         cursor = db.cursor()
-
-        #tabel til borger
+        
+        # Opret Borger tabel (Rettet stavefejl her: EXISTS)
         cursor.execute('''
-            CREATE TABLE IF NOT EXEISTS borger (
+            CREATE TABLE IF NOT EXISTS borger (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 navn TEXT NOT NULL,
                 adresse TEXT NOT NULL
-)
-''')    #måling tabel
+            )
+        ''')
+        
+        # Opret Maaling tabel
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS maaling (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,7 +45,8 @@ def init_db():
                 FOREIGN KEY (borger_id) REFERENCES borger (id)
             )
         ''')
-        #hvis tabellen er tom, oprettes der en test borger
+        
+        # Opret test-borger hvis tabellen er tom
         cursor.execute('SELECT count(*) FROM borger')
         if cursor.fetchone()[0] == 0:
             cursor.execute('INSERT INTO borger (navn, adresse) VALUES (?, ?)', 
@@ -54,45 +56,53 @@ def init_db():
         
         db.commit()
 
+# Kør initialisering
 init_db()
+
+# --- RUTER (Sider og API) ---
 
 @app.route('/')
 def index():
     db = get_db()
     cursor = db.cursor()
-
+    
+    # [cite_start]Hent alle borgere [cite: 55]
     cursor.execute('SELECT * FROM borger')
-    brogere_db = cursor.fetchall()
-
+    borgere_db = cursor.fetchall()
+    
     data_view = []
-    for b in brogere_db:
+    for b in borgere_db:
+        # Hent seneste måling
         cursor.execute('SELECT * FROM maaling WHERE borger_id = ? ORDER BY tidspunkt DESC LIMIT 1', (b['id'],))
         seneste = cursor.fetchone()
+        
         status = "Normal"
         puls_visning = "Ingen data"
         fald_visning = "Nej"
         tid_visning = "-"
-
+        
         if seneste:
             puls_visning = seneste['puls']
             fald_visning = "JA" if seneste['fald_registreret'] else "Nej"
-            tid_visning = seneste ['tidspunkt']
-
+            tid_visning = seneste['tidspunkt']
+            
+            # [cite_start]Logik fra projektbeskrivelse [cite: 56]
             if seneste['fald_registreret']:
                 status = "KRITISK: FALD!"
-            elif seneste['puls'] < 40 or seneste ['puls'] > 130:
+            elif seneste['puls'] < 40 or seneste['puls'] > 130:
                 status = "ADVARSEL: Uregelmæssig puls"
-            
+        
         data_view.append({
             "navn": b['navn'],
             "adresse": b['adresse'],
             "puls": puls_visning,
-            "fald":fald_visning,
+            "fald": fald_visning,
             "status": status,
             "tid": tid_visning
         })
-        return render_template('dashoard.html', borgere=data_view)
-    
+
+    return render_template('dashboard.html', borgere=data_view)
+
 @app.route('/api/data', methods=['POST'])
 def modtag_data():
     data = request.json
@@ -105,14 +115,13 @@ def modtag_data():
 
     db = get_db()
     try:
-        db.execute('INSERT INTO maaling (puls, fald_regisreret, tidspunkt, borger_id) VALUES) (?, ?, ?, ?)'
+        # Rettet SQL syntax og stavefejl herunder
+        db.execute('INSERT INTO maaling (puls, fald_registreret, tidspunkt, borger_id) VALUES (?, ?, ?, ?)', 
                    (puls, fald, nu, borger_id))
         db.commit()
         return jsonify({"message": "Gemt"}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
-if __name__== '__name___':
+
+if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-
-
