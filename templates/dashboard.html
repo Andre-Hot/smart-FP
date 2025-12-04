@@ -13,11 +13,17 @@
 <body>
     <nav class="navbar navbar-dark bg-primary mb-4">
         <div class="container">
-            <a class="navbar-brand" href="#"> Smart FP - Frederikssund Kommune</a>
+            <a class="navbar-brand" href="/">Smart FP - Frederikssund Kommune</a>
         </div>
     </nav>
-     <div class="container">
-        <h2 class="mb-3">Borgeroversigt</h2>
+    <div class="container">
+        
+        <!-- HER ER KNAPPEN OG OVERSKRIFTEN -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>Borgeroversigt</h2>
+            <a href="/opret" class="btn btn-success">Tilføj Ny Borger (+)</a>
+        </div>
+
         <div class="card shadow">
             <div class="card-body">
                 <table class="table table-hover">
@@ -48,9 +54,8 @@
         </div>
     </div>
     <script>
-        // Opdaterer siden hvert 5. sekund
+        // Opdaterer siden hvert 5. sekund for at hente nye sensordata
         setTimeout(function(){ window.location.reload(1); }, 5000);
     </script>
-
-
 </body>
+</html>
