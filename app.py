@@ -25,7 +25,7 @@ def init_db():
         db = get_db()
         cursor = db.cursor()
         
-        # Opret Borger tabel (Rettet stavefejl her: EXISTS)
+        # Opret Borger tabel
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS borger (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,17 +56,15 @@ def init_db():
         
         db.commit()
 
-# Kør initialisering
+# Kør initialisering ved start
 init_db()
 
-# --- RUTER (Sider og API) ---
 
-@app.route('/')
-def index():
+# --- HJÆLPEFUNKTION (Den du manglede før) ---
+def hent_alle_borgere():
+    """Henter alle borgere og deres seneste data. Bruges af både forside og slet-funktion."""
     db = get_db()
     cursor = db.cursor()
-    
-    # [cite_start]Hent alle borgere [cite: 55]
     cursor.execute('SELECT * FROM borger')
     borgere_db = cursor.fetchall()
     
@@ -86,13 +84,13 @@ def index():
             fald_visning = "JA" if seneste['fald_registreret'] else "Nej"
             tid_visning = seneste['tidspunkt']
             
-            # [cite_start]Logik fra projektbeskrivelse [cite: 56]
             if seneste['fald_registreret']:
                 status = "KRITISK: FALD!"
             elif seneste['puls'] < 40 or seneste['puls'] > 130:
                 status = "ADVARSEL: Uregelmæssig puls"
         
         data_view.append({
+            "id": b['id'],
             "navn": b['navn'],
             "adresse": b['adresse'],
             "puls": puls_visning,
@@ -100,8 +98,15 @@ def index():
             "status": status,
             "tid": tid_visning
         })
+    return data_view
 
-    return render_template('dashboard.html', borgere=data_view)
+
+# --- RUTER (Sider og API) ---
+
+@app.route('/')
+def index():
+    # Nu bruger vi hjælpefunktionen, så koden er kortere her
+    return render_template('dashboard.html', borgere=hent_alle_borgere())
 
 @app.route('/api/data', methods=['POST'])
 def modtag_data():
@@ -115,27 +120,36 @@ def modtag_data():
 
     db = get_db()
     try:
-        # Rettet SQL syntax og stavefejl herunder
         db.execute('INSERT INTO maaling (puls, fald_registreret, tidspunkt, borger_id) VALUES (?, ?, ?, ?)', 
                    (puls, fald, nu, borger_id))
         db.commit()
         return jsonify({"message": "Gemt"}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
+
 @app.route('/opret', methods=['GET', 'POST'])
 def opret_borger():
     if request.method == 'POST':
         navn = request.form['navn']
         adresse = request.form['adresse']
-
+        
         db = get_db()
-        db.execute('INSERT INTO borger (navn, adresse) VALUES (?,?)', (navn, adresse))
+        db.execute('INSERT INTO borger (navn, adresse) VALUES (?, ?)', (navn, adresse))
         db.commit()
         return render_template('opret_borger.html', besked="Borger oprettet!")
-    
+        
     return render_template('opret_borger.html')
+
+@app.route('/slet/<int:id>', methods=['POST'])
+def slet_borger(id):
+    db = get_db()
+    # Her er kommaerne rettet: (id,)
+    db.execute('DELETE FROM maaling WHERE borger_id = ?', (id,))
+    db.execute('DELETE FROM borger WHERE id = ?', (id,))
+    db.commit()
+    
+    # Her bruges hjælpefunktionen igen
+    return render_template('dashboard.html', borgere=hent_alle_borgere(), besked="Borger slettet.")
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-

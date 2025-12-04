@@ -4,29 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart FP - Overvågning</title>
+    <!-- Bootstrap 5 CSS for pænt design -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        /* Farvekoder til status */
         .status-kritisk { background-color: #ffcccc; font-weight: bold; color: red; }
         .status-advarsel { background-color: #fff3cd; color: #856404; }
     </style>
 </head>
 <body>
+    <!-- Navigationsbar i toppen -->
     <nav class="navbar navbar-dark bg-primary mb-4">
         <div class="container">
             <a class="navbar-brand" href="/">Smart FP - Frederikssund Kommune</a>
         </div>
     </nav>
+
     <div class="container">
         
-        <!-- HER ER KNAPPEN OG OVERSKRIFTEN -->
+        <!-- Overskrift og "Tilføj" knap på samme linje -->
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2>Borgeroversigt</h2>
             <a href="/opret" class="btn btn-success">Tilføj Ny Borger (+)</a>
         </div>
 
+        <!-- Viser beskeder (f.eks. "Borger slettet") hvis der er nogen -->
+        {% if besked %}
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                {{ besked }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endif %}
+
+        <!-- Tabellen med borgere -->
         <div class="card shadow">
             <div class="card-body">
-                <table class="table table-hover">
+                <table class="table table-hover align-middle">
                     <thead class="table-dark">
                         <tr>
                             <th>Navn</th>
@@ -35,6 +48,7 @@
                             <th>Fald</th>
                             <th>Status</th>
                             <th>Sidst Opdateret</th>
+                            <th>Handling</th> <!-- Ny kolonne til slet-knap -->
                         </tr>
                     </thead>
                     <tbody>
@@ -46,16 +60,36 @@
                             <td>{{ borger.fald }}</td>
                             <td>{{ borger.status }}</td>
                             <td>{{ borger.tid }}</td>
+                            <td>
+                                <!-- Slet Formular -->
+                                <!-- onsubmit="return confirm(...)" laver en popup der spørger om lov først -->
+                                <form action="/slet/{{ borger.id }}" method="post" onsubmit="return confirm('ADVARSEL: Er du sikker på, at du vil slette {{ borger.navn }}?\n\nDette sletter også al historik og målinger for denne borger!');">
+                                    <button type="submit" class="btn btn-danger btn-sm">Slet</button>
+                                </form>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
+        
+        <footer class="mt-5 text-muted text-center">
+            <small>Data opdateres automatisk hvert 10. sekund.</small>
+        </footer>
+
     </div>
+    
+    <!-- JavaScript til automatisk opdatering -->
     <script>
-        // Opdaterer siden hvert 5. sekund for at hente nye sensordata
-        setTimeout(function(){ window.location.reload(1); }, 5000);
+        // Opdaterer siden hvert 10. sekund (10000 millisekunder)
+        // Vi har sat den lidt op, så man kan nå at trykke slet uden siden hopper
+        setTimeout(function(){ 
+            window.location.reload(1); 
+        }, 10000);
     </script>
+    
+    <!-- Bootstrap JS til lukkeknap på beskeder -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
