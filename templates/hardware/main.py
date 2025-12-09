@@ -70,3 +70,68 @@ def connect_wifi():
         print('\nWiFi forbundet:', wlan.ifconfig())
     else:
         print('\nKunne ikke forbinde. Tjek SSID/Password.')
+
+def laes_puls():
+    raw_value = puls_sensor.read()
+    puls_bpm = int((raw_value / 4095) * 150) + 40
+    if puls_bpm < 45: puls_bpm = 0 # Filtrer støj hvis sensoren ikke er på
+    return puls_bpm
+
+def tjek_fald():
+    if mpu is None: return False
+    x, y, z = mpu.get_accel()
+    
+   # Beregn G-kraft (16384 er 1G for denne sensor)
+    g_force = (abs(x) + abs(y) + abs(z)) / 16384.0
+    
+    # Hvis kraften er over 2.5G, registrerer vi et fald
+    if g_force > 2.5:
+        return True
+    return False
+
+def laes_batteri():
+    raw = batteri_sensor.read()
+    # Omregn til procent (3.0V = 0%, 4.2V = 100%)
+    volt = (raw / 4095) * 3.3 * 2 # Gang med 2 pga spændingsdeler
+    procent = int((volt - 3.0) / (4.2 - 3.0) * 100)
+    return max(0, min(100, procent))
+
+# --- 4. HOVED PROGRAM ---
+
+print("Starter Smart Vest...")
+connect_wifi()
+
+print(f"Måler data for Borger ID {BORGER_ID}...")
+
+while True:
+    try:
+        # Læs sensorer
+        puls = laes_puls()
+        fald = tjek_fald()
+        batteri = laes_batteri()
+        
+        if fald:
+            print("!!! FALD DETEKTERET !!!")
+
+        # Pak data
+        payload = {
+            "borger_id": BORGER_ID,
+            "puls": puls,
+            "fald": fald
+        }
+        
+        print(f"Batt: {batteri}% - Sender: {payload}")
+
+        # Send til server
+        headers = {'Content-Type': 'application/json'}
+        res = urequests.post(SERVER_URL, data=ujson.dumps(payload), headers=headers)
+        res.close() # Luk forbindelse for at spare hukommelse
+        
+    except OSError:
+        print("Netværksfejl (Tjek Hotspot og IP)")
+        try: connect_wifi() 
+        except: pass
+    except Exception as e:
+        print("Fejl:", e)
+
+    time.sleep(1) # Opdater hvert sekund
