@@ -2,12 +2,15 @@ import network
 import time
 import urequests
 import ujson
-from machine import Pin, ADC, I2C
+from machine import Pin, ADC, I2C, PWM
 
 SSID = ""
 PASSWORD = ""
 SERVER_URL = ""
 BORGER_ID = 3
+
+Puls_min = 50
+Puls_max = 120
 
 #Pulsmåler 
 puls_sensor = ADC(Pin(34))
